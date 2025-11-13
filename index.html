@@ -149,9 +149,22 @@
   .xp .role{margin:0;font-size:18px;font-weight:800}
   .xp .where{margin:4px 0;color:var(--muted)}
   @media(max-width:780px){.xp{grid-template-columns:1fr}.xp .when{order:-1}}
+  /* Scroll progress bar at top */
+  .scrollbar{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));transform:scaleX(0);transform-origin:left;z-index:60}
+  /* Cursor glow follower */
+  .cursor-glow{position:fixed;width:240px;height:240px;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(88,101,242,.22),rgba(122,92,255,0) 60%);filter:blur(18px);mix-blend-mode:multiply;opacity:0;z-index:5;left:0;top:0;transform:translate(-50%,-50%)}
+  @media (prefers-reduced-motion: reduce){.cursor-glow{display:none}}
+  /* Active nav link highlight */
+  .nav .links a.active{position:relative;color:var(--accent);font-weight:800}
+  .nav .links a.active::after{content:"";position:absolute;left:0;right:0;bottom:-8px;height:2px;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px}
+  /* 3D tilt prep */
+  .card{transform-style:preserve-3d}
+  .hero-image .frame{transform-style:preserve-3d;will-change:transform}
 </style>
 </head>
 <body>
+  <div class="scrollbar" id="scrollbar"></div>
+  <div class="cursor-glow" id="cursorGlow"></div>
   <header>
     <div class="container nav">
       <a href="#top" class="brand">Ace Ha</a>
@@ -719,6 +732,67 @@
       });
     }
 
+    // ===== Scroll progress bar =====
+    const barEl = document.getElementById('scrollbar');
+    if(barEl){
+      let rafId = 0;
+      const onScroll = ()=>{
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        const pct = max>0 ? window.scrollY / max : 0;
+        barEl.style.transform = 'scaleX(' + pct + ')';
+      };
+      const schedule = ()=>{ if(rafId) return; rafId = requestAnimationFrame(()=>{ onScroll(); rafId = 0; }); };
+      window.addEventListener('scroll', schedule, {passive:true});
+      window.addEventListener('resize', schedule);
+      onScroll();
+    }
+
+    // ===== Cursor glow follower =====
+    const glow = document.getElementById('cursorGlow');
+    if(glow && !reduce && window.matchMedia && window.matchMedia('(pointer:fine)').matches){
+      let gx = window.innerWidth/2, gy = window.innerHeight/2, tx=gx, ty=gy, raf=0;
+      function loop(){ gx += (tx-gx)*0.15; gy += (ty-gy)*0.15; glow.style.transform = 'translate('+gx+'px,'+gy+'px) translate(-50%,-50%)'; raf = requestAnimationFrame(loop); }
+      window.addEventListener('mousemove', (e)=>{ glow.style.opacity='1'; tx=e.clientX; ty=e.clientY; if(!raf) raf=requestAnimationFrame(loop); }, {passive:true});
+      window.addEventListener('mouseleave', ()=>{ glow.style.opacity='0'; if(raf){ cancelAnimationFrame(raf); raf=0; }});
+    }
+
+    // ===== Card & hero tilt (magnetic hover) =====
+    function attachTilt(el, maxDeg){
+      if(!el) return;
+      const fine = window.matchMedia && window.matchMedia('(pointer:fine)').matches;
+      if(!fine || reduce) return;
+      let rect;
+      function onMove(e){
+        rect = rect || el.getBoundingClientRect();
+        const x = (e.clientX - (rect.left + rect.width/2)) / (rect.width/2);
+        const y = (e.clientY - (rect.top + rect.height/2)) / (rect.height/2);
+        el.style.transform = 'rotateX('+(-y*maxDeg)+'deg) rotateY('+(x*maxDeg)+'deg)';
+      }
+      function onEnter(){ rect = el.getBoundingClientRect(); el.style.willChange='transform'; }
+      function onLeave(){ rect = null; el.style.transform=''; el.style.willChange=''; }
+      el.addEventListener('mouseenter', onEnter);
+      el.addEventListener('mousemove', onMove);
+      el.addEventListener('mouseleave', onLeave);
+    }
+    document.querySelectorAll('.card').forEach(c=> attachTilt(c,4));
+    attachTilt(document.querySelector('.hero-image .frame'), 4);
+
+    // ===== Section spy (active nav link) =====
+    const navLinks = Array.from(document.querySelectorAll('nav.links a'));
+    if('IntersectionObserver' in window && navLinks.length){
+      const map = new Map(navLinks.map(a=> [a.getAttribute('href'), a]));
+      const sections = Array.from(map.keys()).map(id => document.querySelector(id)).filter(Boolean);
+      const spy = new IntersectionObserver((entries)=>{
+        entries.forEach(en=>{
+          if(en.isIntersecting){
+            const id = '#'+en.target.id;
+            navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href')===id));
+          }
+        });
+      }, {rootMargin:'-45% 0px -50% 0px', threshold:0});
+      sections.forEach(sec => spy.observe(sec));
+    }
+
     // ===== Diagnostics / mini tests =====
     const testMode = url.searchParams.get('test')==='1' || location.hash==='#debug';
     if(testMode){
@@ -732,6 +806,9 @@
         li('IntersectionObserver: ' + ('IntersectionObserver' in window));
         const sample = document.querySelector('.kpi .val');
         if(sample){ li('KPI prefix: "' + (sample.getAttribute('data-prefix')||'') + '"'); }
+        li('scrollbar present: ' + !!document.getElementById('scrollbar'));
+        li('cursor glow present: ' + !!document.getElementById('cursorGlow'));
+        li('nav links tracked: ' + document.querySelectorAll('nav.links a').length)
       }
     }
   })();
