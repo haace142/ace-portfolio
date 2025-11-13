@@ -554,6 +554,7 @@
         <details id="diagnostics" class="mini" style="display:none;margin-top:10px">
           <summary>Diagnostics</summary>
           <ul id="diagList"></ul>
+          <button id="rerunKPI" class="btn" style="margin-top:8px">Re-run KPI counter</button>
         </details>
         <p class="muted" style="margin-top:10px">Prefer LinkedIn? Message me there and I’ll share a private link that expires.</p>
       </div>
@@ -568,12 +569,14 @@
   <script>
   // Footer year + Request form (mailto) + Techy effects + Diagnostics
   (function(){
-    var y = document.getElementById('y');
+    // ===== Footer year =====
+    const y = document.getElementById('y');
     if(y){ y.textContent = new Date().getFullYear(); }
 
-    var f = document.getElementById('accessForm');
-    var statusEl = document.getElementById('formStatus');
-    var fallback = document.getElementById('fallbackLink');
+    // ===== Access/Work mailto form =====
+    const f = document.getElementById('accessForm');
+    const statusEl = document.getElementById('formStatus');
+    const fallback = document.getElementById('fallbackLink');
 
     function showStatus(msg, ok){
       if(!statusEl) return;
@@ -582,10 +585,9 @@
       statusEl.textContent = msg;
     }
 
-    // Build a mailto URL safely (no unescaped newlines inside string literals)
     function buildMailtoFrom(name, email, company, interest){
-      var subject = encodeURIComponent('Access/work inquiry from ' + (name || 'a visitor'));
-      var lines = [
+      const subject = encodeURIComponent('Access/work inquiry from ' + (name || 'a visitor'));
+      const lines = [
         'Name: ' + (name || ''),
         'Work email: ' + (email || ''),
         'Company/Role: ' + (company || ''),
@@ -593,16 +595,17 @@
         '',
         "(Generated via Ace's portfolio website)"
       ];
-      var body = encodeURIComponent(lines.join('\n'));
+      // IMPORTANT: use \n, not a real line break, inside the JS string
+      const body = encodeURIComponent(lines.join('\n'));
       return 'mailto:haduyhung142@gmail.com?subject=' + subject + '&body=' + body;
     }
 
     function buildMailto(){
       if(!f) return 'mailto:haduyhung142@gmail.com';
-      var name = (f.elements['name'] && f.elements['name'].value || '').trim();
-      var email = (f.elements['email'] && f.elements['email'].value || '').trim();
-      var company = (f.elements['company'] && f.elements['company'].value || '').trim();
-      var interest = (f.elements['interest'] && f.elements['interest'].value || '').trim();
+      const name = (f.elements['name'] && f.elements['name'].value || '').trim();
+      const email = (f.elements['email'] && f.elements['email'].value || '').trim();
+      const company = (f.elements['company'] && f.elements['company'].value || '').trim();
+      const interest = (f.elements['interest'] && f.elements['interest'].value || '').trim();
       return buildMailtoFrom(name, email, company, interest);
     }
 
@@ -625,136 +628,112 @@
       });
     }
 
-    // === Techy effects: KPI counter + scroll reveal ===
-    (function(){
-      // Force animations ON by default (user request). Use ?anim=0 to disable.
-      var url = new URL(window.location.href);
-      var forceAnim = url.searchParams.get('anim') !== '0';
-      if(forceAnim){ document.documentElement.setAttribute('data-anim','on'); }
-      var reduce = !forceAnim && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // ===== Techy effects =====
+    const url = new URL(window.location.href);
+    const forceAnim = url.searchParams.get('anim') !== '0';
+    if(forceAnim){ document.documentElement.setAttribute('data-anim','on'); }
+    const reduce = !forceAnim && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-      // Mark reveal targets
-      var revealSel = 'section h2, .card, .kpi';
-      document.querySelectorAll(revealSel).forEach(function(el){ el.classList.add('reveal'); });
+    // Mark reveal targets
+    document.querySelectorAll('section h2, .card, .kpi').forEach(function(el){ el.classList.add('reveal'); });
 
-      function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
-      function animateNumber(el, target, decimals){
-        var prefix = el.getAttribute('data-prefix') || '';
-        var start = parseFloat((el.textContent || '0').replace(/[^\d.-]/g,'')) || 0;
-        var duration = 1200; // ms
-        var startTs = null;
-        function step(ts){
-          if(startTs === null) startTs = ts;
-          var p = Math.min(1, (ts - startTs) / duration);
-          var val = start + (target - start) * easeOutCubic(p);
-          el.textContent = prefix + val.toFixed(decimals);
-          if(p < 1){ requestAnimationFrame(step); }
-          else { el.textContent = prefix + Number(target).toFixed(decimals); }
-        }
-        requestAnimationFrame(step);
+    function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+
+    // Animate a single number element
+    function animateNumber(el, target, decimals){
+      const prefix = el.getAttribute('data-prefix') || '';
+      const start = parseFloat(el.getAttribute('data-start') || '0') || 0;
+      const duration = 1200; // ms
+      let startTs = null;
+      function step(ts){
+        if(startTs === null) startTs = ts;
+        const p = Math.min(1, (ts - startTs) / duration);
+        const val = start + (target - start) * easeOutCubic(p);
+        el.textContent = prefix + val.toFixed(decimals);
+        if(p < 1){ requestAnimationFrame(step); }
+        else { el.textContent = prefix + Number(target).toFixed(decimals); }
       }
+      requestAnimationFrame(step);
+    }
 
-      function setNumber(el){
-        var dec = parseInt(el.getAttribute('data-decimals')||'0',10);
-        var tgt = parseFloat(el.getAttribute('data-target')||'0');
-        var pre = el.getAttribute('data-prefix')||'';
-        el.textContent = pre + tgt.toFixed(dec);
+    // Set KPI text to baseline before animating
+    function initCounterZeros(){
+      document.querySelectorAll('.kpi .val[data-target]').forEach(function(el){
+        const dec = parseInt(el.getAttribute('data-decimals')||'0',10);
+        const pre = el.getAttribute('data-prefix')||'';
+        const start = parseFloat(el.getAttribute('data-start')||'0') || 0;
+        el.textContent = pre + start.toFixed(dec);
+      });
+    }
+
+    function initCountersAnimated(){
+      const blocks = document.querySelectorAll('.kpi');
+      if(!blocks.length) return;
+      const io = new IntersectionObserver(function(entries){
+        entries.forEach(function(entry){
+          if(entry.isIntersecting){
+            const block = entry.target;
+            if(block.dataset.done) return; // run once
+            block.dataset.done = '1';
+            block.querySelectorAll('.val[data-target]').forEach(function(el){
+              const dec = parseInt(el.getAttribute('data-decimals')||'0',10);
+              const tgt = parseFloat(el.getAttribute('data-target')||'0');
+              animateNumber(el, tgt, dec);
+            });
+            block.classList.add('in');
+            io.unobserve(block);
+          }
+        });
+      }, {threshold:0.35});
+      blocks.forEach(function(b){ io.observe(b); });
+    }
+
+    function initReveal(){
+      const io = new IntersectionObserver(function(entries){
+        entries.forEach(function(entry){
+          if(entry.isIntersecting){
+            entry.target.classList.add('in');
+            io.unobserve(entry.target);
+          }
+        });
+      }, {threshold:0.15});
+      document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+    }
+
+    if(reduce){
+      // No motion
+      document.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('in'); });
+      document.querySelectorAll('.kpi').forEach(function(el){ el.classList.add('in'); });
+    } else if('IntersectionObserver' in window){
+      initCounterZeros();
+      initReveal();
+      initCountersAnimated();
+    } else {
+      // Fallback: animate immediately
+      initCounterZeros();
+      document.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('in'); });
+      document.querySelectorAll('.kpi .val[data-target]').forEach(function(el){
+        const dec = parseInt(el.getAttribute('data-decimals')||'0',10);
+        const tgt = parseFloat(el.getAttribute('data-target')||'0');
+        animateNumber(el, tgt, dec);
+      });
+    }
+
+    // ===== Diagnostics / mini tests =====
+    const testMode = url.searchParams.get('test')==='1' || location.hash==='#debug';
+    if(testMode){
+      const diag = document.getElementById('diagnostics');
+      const list = document.getElementById('diagList');
+      if(diag && list){
+        diag.style.display='block';
+        function li(msg){ const n=document.createElement('li'); n.textContent=msg; list.appendChild(n); }
+        const mt = buildMailtoFrom('Test','test@example.com','Co','Hello world');
+        li('mailto builds: ' + (mt.indexOf('mailto:')===0));
+        li('IntersectionObserver: ' + ('IntersectionObserver' in window));
+        const sample = document.querySelector('.kpi .val');
+        if(sample){ li('KPI prefix: "' + (sample.getAttribute('data-prefix')||'') + '"'); }
       }
-
-      function initCountersAnimated(){
-        var nodes = document.querySelectorAll('.kpi .val[data-target]');
-        if(!nodes.length) return;
-        var io = new IntersectionObserver(function(entries){
-          entries.forEach(function(entry){
-            if(entry.isIntersecting){
-              var kpi = entry.target;
-              // Only run once per KPI block
-              if(kpi.dataset.done) return;
-              kpi.dataset.done = '1';
-              kpi.querySelectorAll('.val[data-target]').forEach(function(el){
-                var dec = parseInt(el.getAttribute('data-decimals')||'0',10);
-                var tgt = parseFloat(el.getAttribute('data-target')||'0');
-                animateNumber(el, tgt, dec);
-              });
-              // Reveal animation
-              kpi.classList.add('in');
-              io.unobserve(kpi);
-            }
-          });
-        },{threshold:0.35});
-        document.querySelectorAll('.kpi').forEach(function(k){ io.observe(k); });
-      }
-
-      function initReveal(){
-        if(reduce){
-          document.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('in'); });
-          // If reduced motion, set numbers immediately
-          document.querySelectorAll('.kpi .val[data-target]').forEach(setNumber);
-          return;
-        }
-        var io = new IntersectionObserver(function(entries){
-          entries.forEach(function(entry){
-            if(entry.isIntersecting){
-              entry.target.classList.add('in');
-              io.unobserve(entry.target);
-            }
-          });
-        },{threshold:0.2});
-        document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
-      }
-
-      if('IntersectionObserver' in window){
-        initReveal();
-        initCountersAnimated();
-      } else {
-        // Fallback: no IO support
-        document.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('in'); });
-        document.querySelectorAll('.kpi .val[data-target]').forEach(setNumber);
-      }
-
-      // Diagnostics toggle (?test=1 or #debug)
-      var testMode = url.searchParams.get('test') === '1' || location.hash.indexOf('debug') !== -1;
-      if(testMode){
-        var diag = document.getElementById('diagnostics');
-        var list = document.getElementById('diagList');
-        if(diag && list){
-          diag.style.display = 'block';
-          function li(msg){ var li=document.createElement('li'); li.textContent=msg; list.appendChild(li); }
-          li('JS loaded');
-          li('IntersectionObserver: ' + ('IntersectionObserver' in window));
-          var sample = buildMailtoFrom('Ace Tester','ace@example.com','Test Co','Delta & Cartesian preview');
-          li('mailto sample ok: ' + (sample.indexOf('mailto:')===0));
-          li('reduce motion: ' + reduce);
-        }
-      }
-    })();
-
-    // === Tiny runtime tests (run only in ?test=1) ===
-    (function(){
-      var runTests = new URL(window.location.href).searchParams.get('test') === '1';
-      if(!runTests) return;
-      console.log('[tests] running…');
-      // Test 1: mailto builder includes encoded newlines and fields
-      (function(){
-        var url = (function(){
-          var subject = encodeURIComponent('Access/work inquiry from Ace');
-          var body = encodeURIComponent(['Name: Ace','Work email: ace@example.com'].join('\n'));
-          return 'mailto:haduyhung142@gmail.com?subject='+subject+'&body='+body;
-        })();
-        console.assert(url.indexOf('\n')===-1,'[mailto] raw newlines leaked');
-      })();
-      // Test 2: KPI format keeps prefix and decimals
-      (function(){
-        var span = document.createElement('span');
-        span.setAttribute('data-prefix','≤');
-        span.textContent='≤0.00';
-        document.body.appendChild(span);
-        var startText = span.textContent;
-        console.assert(startText.charAt(0)==='≤','[kpi] missing prefix before anim');
-        document.body.removeChild(span);
-      })();
-      console.log('[tests] done');
-    })();
+    }
   })();
   </script>
 </body>
