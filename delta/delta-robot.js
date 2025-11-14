@@ -72,7 +72,7 @@
       const k = f / (f + z);
       return {
         x: canvas.width / 2 + p.x * k,
-        y: canvas.height * 0.55 - p.y * k,
+        y: canvas.height * 0.35 - p.y * k,
         k,
       };
     }

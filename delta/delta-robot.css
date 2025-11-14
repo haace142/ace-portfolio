@@ -1,15 +1,29 @@
 /* ===== Delta robot animated background (hero only) ===== */
 
 /* Bao nền delta phía sau hero */
+/* Bao nền delta phía sau SLOGAN (không còn là cả hero) */
+.slogan{
+  position: relative;
+  padding: 120px 0;          /* làm section này cao hơn để thấy rõ con delta */
+  border-top: none;
+  overflow: hidden;          /* cắt phần delta thò ra ngoài */
+}
+
+.slogan .container{
+  position: relative;
+  z-index: 1;                /* chữ nằm trên con delta */
+}
+
 #delta-bg{
-  position: fixed;              /* giữ phía sau hero khi scroll */
+  position: absolute;        /* bám theo section .slogan */
   left: 0;
   top: 0;
   right: 0;
-  height: 520px;                /* JS sẽ resize theo chiều cao hero */
-  z-index: 0;                   /* header z-index = 40, main nằm sau trong DOM nên chồng lên */
-  pointer-events: none;         /* không chặn click vào nội dung */
+  bottom: 0;                 /* phủ toàn bộ chiều cao slogan */
+  z-index: 0;
+  pointer-events: none;
 }
+
 
 /* Canvas vẽ con delta */
 #delta-bg canvas{
