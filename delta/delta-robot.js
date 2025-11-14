@@ -180,7 +180,7 @@
     const ee = getEndEffector(cx, cy);
 
     drawGlow(cx, cy);
-    drawGrid(cy);
+    
 
     // update trail
     trail.push({ x: ee.x, y: ee.y });
