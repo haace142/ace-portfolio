@@ -294,7 +294,6 @@
   <script defer src="delta/delta-robot.js"></script>
 </head>
 <body>
-  <div id="delta-bg"></div>
   <div class="scrollbar" id="scrollbar"></div>
   <div class="cursor-glow" id="cursorGlow"></div>
   <header>
@@ -354,6 +353,8 @@
       </div>
     </section>
     <section class="slogan" aria-label="Engineering belief">
+	  <!-- Delta robot chỉ chạy trong section này -->
+      <div id="delta-bg" aria-hidden="true"></div>
       <div class="container">
         <h2>Reliable motion for actuators, gearboxes, robots &amp; test rigs</h2>
       </div>
